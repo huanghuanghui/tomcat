@@ -1,79 +1,41 @@
-## Welcome to Apache Tomcat!
+# 如何编译 TOMCAT 源码
+1. 克隆tomcat 源码
+```bash
+git clone -b 9.0.44 https://github.com/apache/tomcat.git
+```
+2. 安装 [ant](https://dlcdn.apache.org//ant/binaries/apache-ant-1.10.12-bin.zip/) 
 
-### What Is It?
+3. 修改依赖包的目录,建议改到项目内部libs目录
+```bash
+sed -iE 's#(^base.path=).*$#\1XXX#p' build.properties.default
+```
+4. 执行命令构建
+```bash
+ant deploy
+# 使用eclipse 项目构建 用IDEA 打开 IDEA 的有坑不要趟
+ant ide-eclipse
+```
+4. 从ant 安装目录复制 ant.jar 放入libs 目录,并将libs目录add as library
 
-The Apache Tomcat® software is an open source implementation of the Java
-Servlet, JavaServer Pages, Java Expression Language and Java WebSocket
-technologies. The Java Servlet, JavaServer Pages, Java Expression Language and
-Java WebSocket specifications are developed under the
-[Java Community Process](https://jcp.org/en/introduction/overview).
+5. idea 打开项目试着运行一下 bootstrap 看是否有缺少包 注释掉测试文件 test/org/apache/coyote/http2/TestStream.java
+和 test/util/TestCookieFilter.java 的报错信息
 
-The Apache Tomcat software is developed in an open and participatory
-environment and released under the
-[Apache License version 2](https://www.apache.org/licenses/). The Apache Tomcat
-project is intended to be a collaboration of the best-of-breed developers from
-around the world. We invite you to participate in this open development
-project. To learn more about getting involved,
-[click here](https://tomcat.apache.org/getinvolved.html) or keep reading.
+6. 设置项目JDK建议使用JDK 11 (JDK8 需要修改字符集乱码影响不大)
 
-Apache Tomcat software powers numerous large-scale, mission-critical web
-applications across a diverse range of industries and organizations. Some of
-these users and their stories are listed on the
-[PoweredBy wiki page](https://wiki.apache.org/tomcat/PoweredBy).
-
-Apache Tomcat, Tomcat, Apache, the Apache feather, and the Apache Tomcat
-project logo are trademarks of the Apache Software Foundation.
-
-### Get It
-
-For every major Tomcat version there is one download page containing
-links to the latest binary and source code downloads, but also
-links for browsing the download directories and archives:
-- [Tomcat 9](https://tomcat.apache.org/download-90.cgi)
-- [Tomcat 8](https://tomcat.apache.org/download-80.cgi)
-- [Tomcat 7](https://tomcat.apache.org/download-70.cgi)
-
-To facilitate choosing the right major Tomcat version one, we have provided a
-[version overview page](https://tomcat.apache.org/whichversion.html).
-
-### Documentation
-
-The documentation available as of the date of this release is
-included in the docs webapp which ships with tomcat. You can access that webapp
-by starting tomcat and visiting <http://localhost:8080/docs/> in your browser.
-The most up-to-date documentation for each version can be found at:
-- [Tomcat 9](https://tomcat.apache.org/tomcat-9.0-doc/)
-- [Tomcat 8](https://tomcat.apache.org/tomcat-8.5-doc/)
-- [Tomcat 7](https://tomcat.apache.org/tomcat-7.0-doc/)
-
-### Installation
-
-Please see [RUNNING.txt](RUNNING.txt) for more info.
-
-### Licensing
-
-Please see [LICENSE](LICENSE) for more info.
-
-### Support and Mailing List Information
-
-* Free community support is available through the
-[tomcat-users](https://tomcat.apache.org/lists.html#tomcat-users) email list and
-a dedicated [IRC channel](https://tomcat.apache.org/irc.html) (#tomcat on
-Freenode).
-
-* If you want freely available support for running Apache Tomcat, please see the
-resources page [here](https://tomcat.apache.org/findhelp.html).
-
-* If you want to be informed about new code releases, bug fixes,
-security fixes, general news and information about Apache Tomcat, please
-subscribe to the
-[tomcat-announce](https://tomcat.apache.org/lists.html#tomcat-announce) email
-list.
-
-* If you have a concrete bug report for Apache Tomcat, please see the
-instructions for reporting a bug
-[here](https://tomcat.apache.org/bugreport.html).
-
-### Contributing
-
-Please see [CONTRIBUTING](CONTRIBUTING.md) for more info.
+7. idea 配置tomcat 启动参数
+```bash
+-Djava.util.logging.config.file=/Users/huyiyu/github/tomcat/conf/logging.properties -Djava.util.logging.manager=org.apache.juli.ClassLoaderLogManager -Djdk.tls.ephemeralDHKeySize=2048 -Djava.protocol.handler.pkgs=org.apache.catalina.webresources -Dorg.apache.catalina.security.SecurityListener.UMASK=0027 -Dcatalina.base=/Users/huyiyu/github/tomcat/ -Dcatalina.home=/Users/huyiyu/github/tomcat/
+```
+8. 将output 编译好的webapp 覆盖源码webapp
+```bash
+mv webapps webapps-backup
+cp -r output/build/webapps webapps
+```
+9. bootstrap 静态代码块中添加主动初始化JSP代码
+```java
+try {
+    Class<?> aClass = Class.forName("org.apache.jasper.servlet.JasperInitializer");
+} catch (ClassNotFoundException e) {
+    e.printStackTrace();
+}
+```

@@ -30,8 +30,12 @@ import java.util.regex.Pattern;
 import org.apache.catalina.security.SecurityClassLoad;
 import org.apache.catalina.startup.ClassLoaderFactory.Repository;
 import org.apache.catalina.startup.ClassLoaderFactory.RepositoryType;
+import org.apache.jasper.runtime.JspFactoryImpl;
+import org.apache.jasper.servlet.JasperInitializer;
 import org.apache.juli.logging.Log;
 import org.apache.juli.logging.LogFactory;
+
+import javax.servlet.jsp.JspFactory;
 
 /**
  * Bootstrap loader for Catalina.  This application constructs a class loader
@@ -121,6 +125,13 @@ public final class Bootstrap {
         }
         System.setProperty(
                 Constants.CATALINA_BASE_PROP, catalinaBaseFile.getPath());
+
+
+        try {
+            Class<?> aClass = Class.forName("org.apache.jasper.servlet.JasperInitializer");
+        } catch (ClassNotFoundException e) {
+            e.printStackTrace();
+        }
     }
 
     // -------------------------------------------------------------- Variables
