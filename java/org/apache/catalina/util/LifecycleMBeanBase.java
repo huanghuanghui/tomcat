@@ -44,6 +44,7 @@ public abstract class LifecycleMBeanBase extends LifecycleBase
     protected MBeanServer mserver = null;
 
     /**
+     * 父类中实现了注册到JMX server 的方法，所有子类继承并调用父类的setInternal
      * Sub-classes wishing to perform additional initialization should override
      * this method, ensuring that super.initInternal() is the first call in the
      * overriding method.

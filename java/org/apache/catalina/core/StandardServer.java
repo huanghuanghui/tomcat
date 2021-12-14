@@ -993,17 +993,14 @@ public final class StandardServer extends LifecycleMBeanBase implements Server {
      */
     @Override
     protected void initInternal() throws LifecycleException {
-
+        // 向JMX 注册自身对象
         super.initInternal();
 
         // Initialize utility executor
         reconfigureUtilityExecutor(getUtilityThreadsInternal(utilityThreads));
+        // 向JMX 注册线程池对象
         register(utilityExecutor, "type=UtilityExecutor");
-
-        // Register global String cache
-        // Note although the cache is global, if there are multiple Servers
-        // present in the JVM (may happen when embedding) then the same cache
-        // will be registered under multiple names
+        // XIAG  F
         onameStringCache = register(new StringCache(), "type=StringCache");
 
         // Register the MBeanFactory
@@ -1040,7 +1037,7 @@ public final class StandardServer extends LifecycleMBeanBase implements Server {
                 cl = cl.getParent();
             }
         }
-        // Initialize our defined Services
+        // 初始化server 内部的service列表,默认只有一个 StandardService 一个server 可以有多个Service
         for (Service service : services) {
             service.init();
         }

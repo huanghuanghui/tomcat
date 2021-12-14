@@ -30,8 +30,12 @@ import java.util.regex.Pattern;
 import org.apache.catalina.security.SecurityClassLoad;
 import org.apache.catalina.startup.ClassLoaderFactory.Repository;
 import org.apache.catalina.startup.ClassLoaderFactory.RepositoryType;
+import org.apache.jasper.runtime.JspFactoryImpl;
+import org.apache.jasper.servlet.JasperInitializer;
 import org.apache.juli.logging.Log;
 import org.apache.juli.logging.LogFactory;
+
+import javax.servlet.jsp.JspFactory;
 
 /**
  * Bootstrap loader for Catalina.  This application constructs a class loader
@@ -53,35 +57,48 @@ public final class Bootstrap {
      * Daemon object used by main.
      */
     private static final Object daemonLock = new Object();
+    /**
+     * BOOTSTRAP 对象
+     */
     private static volatile Bootstrap daemon = null;
-
+    /**
+     * 记录CATALINA_BASE 的目录
+     */
     private static final File catalinaBaseFile;
+    /**
+     * 记录CATALINA_HOME 的目录
+     */
     private static final File catalinaHomeFile;
 
     private static final Pattern PATH_PATTERN = Pattern.compile("(\"[^\"]*\")|(([^,])*)");
 
+    /**
+     *  本static 代码块功能为：尽最大可能设置CATALINA_HOME 和 CATALINA_BASE
+     *  CATALINA_HOME: 是tomcat 所在的安装目录
+     *  CATALINA_BASE: 是tomcat 的运行目录(配置文件所在目录)
+     *  大多数情况下两者完全相等,微服务趋势下不会允许一个tomcat 部署多个应用
+     */
     static {
-        // Will always be non-null
+        // 系统环境变量中获取 user.dir
         String userDir = System.getProperty("user.dir");
 
-        // Home first
+        // 系统环境变量中获取 CATALINA_HOME
         String home = System.getProperty(Constants.CATALINA_HOME_PROP);
         File homeFile = null;
-
+        // CATALINA_HOME 变量存在判断CATALINA_HOME 目录是否存在
         if (home != null) {
             File f = new File(home);
             try {
+                // getCanonicalFile getAbsoluteFile 都表示获取绝对路径,但是getCanonicalFile 可以去掉多余的.和/
                 homeFile = f.getCanonicalFile();
             } catch (IOException ioe) {
                 homeFile = f.getAbsoluteFile();
             }
         }
-
+        // CATALINA_HOME 目录不存在设置引导JAR 为用户目录下的bootstrap.jar
         if (homeFile == null) {
-            // First fall-back. See if current directory is a bin directory
-            // in a normal Tomcat install
             File bootstrapJar = new File(userDir, "bootstrap.jar");
-
+            // 如果引导启动jar存在 设置 CATALINA_HOME 目录为用户目录的上一层
             if (bootstrapJar.exists()) {
                 File f = new File(userDir, "..");
                 try {
@@ -91,9 +108,8 @@ public final class Bootstrap {
                 }
             }
         }
-
+        // 如果CATALINA_HOME 目录仍然不存在 设置为用户目录
         if (homeFile == null) {
-            // Second fall-back. Use current directory
             File f = new File(userDir);
             try {
                 homeFile = f.getCanonicalFile();
@@ -101,12 +117,12 @@ public final class Bootstrap {
                 homeFile = f.getAbsoluteFile();
             }
         }
-
         catalinaHomeFile = homeFile;
+        // 将CATALINA_HOME 设置到系统变量和 catalinaHomeFile 静态变量
         System.setProperty(
                 Constants.CATALINA_HOME_PROP, catalinaHomeFile.getPath());
 
-        // Then base
+        // 先判断系统变量是否有CATALINA_HOME
         String base = System.getProperty(Constants.CATALINA_BASE_PROP);
         if (base == null) {
             catalinaBaseFile = catalinaHomeFile;
@@ -121,24 +137,44 @@ public final class Bootstrap {
         }
         System.setProperty(
                 Constants.CATALINA_BASE_PROP, catalinaBaseFile.getPath());
+
+        /* 这个代码是本人添加用于源码调试的,如果不加会导致JSP无法正常解析*/
+        try {
+            Class.forName("org.apache.jasper.servlet.JasperInitializer");
+        } catch (ClassNotFoundException e) {
+            e.printStackTrace();
+        }
+        /* 这个代码是本人添加用于源码调试的,如果不加会导致JSP无法正常解析*/
     }
-
-    // -------------------------------------------------------------- Variables
-
-
     /**
-     * Daemon reference.
+     * 启动后保存Catalina 对象
      */
     private Object catalinaDaemon = null;
-
+    /**
+     * 通用的类加载器 加载内容配置在 catalina.properties 的 common.loader
+     * 默认加载tomcat lib目录下的包,类型为 URLClassLoader
+     */
     ClassLoader commonLoader = null;
+    /***
+     * catalina 类加载器 加载内容配置在 catalina.properties 的catalina.loader
+     */
     ClassLoader catalinaLoader = null;
+    /**
+     * 共享的类加载器 加载内容配置在 catalina.properties 的 shared.loader 用于加载 webapps下 应用
+     */
     ClassLoader sharedLoader = null;
 
 
     // -------------------------------------------------------- Private Methods
 
-
+    /**
+     * 初始化类加载器,
+     * 配置在catalina.properties 是加载路径
+     * common.loader 加载 CATALINA_HOME/lib 和CATALINA_HOME/lib 目录下的内容
+     * server.loader 默认无内容,直接返回commonLoader
+     * shared.loader 默认无内容,直接返回commonLoader
+     *
+     */
     private void initClassLoaders() {
         try {
             commonLoader = createClassLoader("common", null);
@@ -155,10 +191,16 @@ public final class Bootstrap {
         }
     }
 
-
+    /**
+     * 创建类加载器 并从 catalina.properties 中根据名称获取加载内容,默认加载 CATALINA_BASE/lib 和 CATALINA_HOME/lib 下的内容
+     * @param name
+     * @param parent
+     * @return
+     * @throws Exception
+     */
     private ClassLoader createClassLoader(String name, ClassLoader parent)
         throws Exception {
-
+        // 从catalina.properties 中获取 key为common.loader的内容
         String value = CatalinaProperties.getProperty(name + ".loader");
         if ((value == null) || (value.equals("")))
             return parent;
@@ -197,7 +239,7 @@ public final class Bootstrap {
 
 
     /**
-     * System property replacement in the given string.
+     * 替换字符串中的系统变量
      *
      * @param str The original string
      * @return the modified string
@@ -247,16 +289,17 @@ public final class Bootstrap {
      * @throws Exception Fatal initialization error
      */
     public void init() throws Exception {
-
+        //根据catalina.properties 初始化类加载器
         initClassLoaders();
-
+        // 设置线程上下文类加载器
         Thread.currentThread().setContextClassLoader(catalinaLoader);
-
+        // 初始化类 个人理解是验证这些类是否存在
         SecurityClassLoad.securityClassLoad(catalinaLoader);
 
         // Load our startup class and call its process() method
         if (log.isDebugEnabled())
             log.debug("Loading startup class");
+        // 创建catalina对象设置内部parentClassLoader 属性为shareLoader
         Class<?> startupClass = catalinaLoader.loadClass("org.apache.catalina.startup.Catalina");
         Object startupInstance = startupClass.getConstructor().newInstance();
 
@@ -323,8 +366,9 @@ public final class Bootstrap {
      * @throws Exception Fatal initialization error
      */
     public void init(String[] arguments) throws Exception {
-
+        // 创建类加载器,创建Catalina 对象,提供创建的类加载器
         init();
+        // 反射调用Catalina 的 load方法
         load(arguments);
     }
 
@@ -563,7 +607,11 @@ public final class Bootstrap {
         return t;
     }
 
-    // Protected for unit testing
+    /**
+     * 将value 解析成String 数组,按正则表达式
+     * @param value
+     * @return
+     */
     protected static String[] getPaths(String value) {
 
         List<String> result = new ArrayList<>();

@@ -692,20 +692,20 @@ public class Catalina {
      * Start a new server instance.
      */
     public void load() {
-
+        // 判断并记录load方法已经调用
         if (loaded) {
             return;
         }
         loaded = true;
 
         long t1 = System.nanoTime();
-
+        // 初始化目录 默认不执行
         initDirs();
 
-        // Before digester - it may be needed
+        // 设置系统属性  java.naming.factory.initial=org.apache.naming.java.javaURLContextFactory
         initNaming();
 
-        // Parse main server.xml
+        // 解析server.xml 并创建对应对象
         parseServerXml(true);
         Server s = getServer();
         if (s == null) {
@@ -716,11 +716,12 @@ public class Catalina {
         getServer().setCatalinaHome(Bootstrap.getCatalinaHomeFile());
         getServer().setCatalinaBase(Bootstrap.getCatalinaBaseFile());
 
-        // Stream redirection
+        // 使用装饰器增强标准输入输出
         initStreams();
 
         // Start the new server
         try {
+            // 从创建的server 中执行init 方法
             getServer().init();
         } catch (LifecycleException e) {
             if (Boolean.getBoolean("org.apache.catalina.startup.EXIT_ON_INIT_FAILURE")) {
@@ -883,7 +884,9 @@ public class Catalina {
     protected void initDirs() {
     }
 
-
+    /**
+     * 使用装饰器增强标准输入输出,主要目的是把system.out.println 记录起来
+     */
     protected void initStreams() {
         // Replace System.out and System.err with a custom PrintStream
         System.setOut(new SystemLogHandler(System.out));

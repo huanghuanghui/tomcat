@@ -36,16 +36,16 @@ public final class SecurityClassLoad {
             return;
         }
 
-        loadCorePackage(loader);
-        loadCoyotePackage(loader);
-        loadLoaderPackage(loader);
-        loadRealmPackage(loader);
-        loadServletsPackage(loader);
-        loadSessionPackage(loader);
-        loadUtilPackage(loader);
-        loadJavaxPackage(loader);
-        loadConnectorPackage(loader);
-        loadTomcatPackage(loader);
+        loadCorePackage(loader); // 初始化core 相关类
+        loadCoyotePackage(loader); // 初始化coyote 相关类
+        loadLoaderPackage(loader); // 初始化loader 相关类
+        loadRealmPackage(loader); // 初始化realm 相关类
+        loadServletsPackage(loader); // 初始化servlet 相关类
+        loadSessionPackage(loader); // 初始化Session 相关类
+        loadUtilPackage(loader); // 初始化util 相关类
+        loadJavaxPackage(loader); // 初始化 Cookie 类
+        loadConnectorPackage(loader); // 初始化 connector 相关类
+        loadTomcatPackage(loader); // 初始化tomcat 相关类
     }
 
 
