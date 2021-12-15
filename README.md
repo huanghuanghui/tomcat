@@ -5,7 +5,7 @@ git clone -b 9.0.44 https://github.com/apache/tomcat.git
 ```
 2. 安装 [ant](https://dlcdn.apache.org//ant/binaries/apache-ant-1.10.12-bin.zip) 
 ```bash
-wget -Ottps://dlcdn.apache.org//ant/binaries/apache-ant-1.10.12-bin.zip
+wget -O https://dlcdn.apache.org//ant/binaries/apache-ant-1.10.12-bin.zip
 sudo unzip ant.zip -d /usr/local/
 export ANT_HOME=/usr/local/apache-ant-1.10.12
 export PATH=$PATH:${ANT_HOME}/bin
