@@ -18,13 +18,10 @@ package org.apache.catalina;
 
 
 /**
- * Common interface for component life cycle methods.  Catalina components
- * may implement this interface (as well as the appropriate interface(s) for
- * the functionality they support) in order to provide a consistent mechanism
- * to start and stop the component.
+ * 拥有组件标准生命周期方法的接口.
+ * catalina 组件会实现这些方法(以及支持功能的部分方法) 来提供一定的机制启动和停止组件
  * <br>
- * The valid state transitions for components that support {@link Lifecycle}
- * are:
+ * 支持 {@link Lifecycle} 的组件的有效状态转换是：
  * <pre>
  *            start()
  *  -----------------------------

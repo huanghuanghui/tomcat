@@ -42,7 +42,7 @@ public abstract class LifecycleBase implements Lifecycle {
 
 
     /**
-     *  生命周期监听器
+     *  保存当前容器所持有的生命周期监听器生命周期监听器
      */
     private final List<LifecycleListener> lifecycleListeners = new CopyOnWriteArrayList<>();
 
@@ -57,12 +57,9 @@ public abstract class LifecycleBase implements Lifecycle {
 
 
     /**
-     * Will a {@link LifecycleException} thrown by a sub-class during
-     * {@link #initInternal()}, {@link #startInternal()},
-     * {@link #stopInternal()} or {@link #destroyInternal()} be re-thrown for
-     * the caller to handle or will it be logged instead?
+     * 判断当出现错误时是否抛出异常
      *
-     * @return {@code true} if the exception will be re-thrown, otherwise
+     * @return {@code true} 异常将会抛出否则为
      *         {@code false}
      */
     public boolean getThrowOnFailure() {
@@ -126,7 +123,12 @@ public abstract class LifecycleBase implements Lifecycle {
 
 
     @Override
-    public final synchronized void init() throws LifecycleException {
+    /**
+     * 所有初始化动作统一调用修改状态为 NEW-> INITIALIZING 触发事件
+     * 然后执行initInternal
+     * 最后将状态为INITIALIZING->INITIALIZED 触发事件
+     */
+    public final synchronized void  init() throws LifecycleException {
         if (!state.equals(LifecycleState.NEW)) {
             invalidTransition(Lifecycle.BEFORE_INIT_EVENT);
         }
@@ -152,6 +154,16 @@ public abstract class LifecycleBase implements Lifecycle {
 
     /**
      * {@inheritDoc}
+     * 1. 检查启动前状态是否为 STARTING_PREP STARTING STARTED 任意一个如果是说明二次启动了打印异常但不退出 通常此处为INITIALIZED
+     * 2. 如果为 NEW 状态(未执行init方法) 先执行init 方法
+     * 3. 如果为 FAILED 状态说明启动失败执行 stop 方法
+     * 4. 如果为 INITIALIZED 后面是START的真正逻辑
+     * 5. 发布 STARTING_PREP 事件
+     * 6. 调用实现 startInternal()
+     * 7. 如果状态变为 FAILED 说明中途失败了 调用stop清理
+     * 8. 如果状态变不是 STARTING 说明状态流转有问题 抛出异常结束
+     * 9. 状态是 STARTING 那么将状态变为 STARTED 启动成功
+     * 10. 如果抛出异常进入异常处理发布失败事件
      */
     @Override
     public final synchronized void start() throws LifecycleException {
@@ -218,6 +230,14 @@ public abstract class LifecycleBase implements Lifecycle {
 
     /**
      * {@inheritDoc}
+     * 1. 判断状态是不是在停止前停止时和停止后 避免重复停止,重复停止会打印错误日志并且不再执行直接返回
+     * 2. 状态如果未初始化 那么直接置为已结束 不需要做清理工作
+     * 3. 如果不是已启动 或者启动失败 说明状态流转不符合图示抛出异常
+     * 4. 启动发布失败 直接发布事件BEFORE_STOP_EVENT 不要转换到 STOPPING_PREP，因为这会短暂地将组件标记为可用
+     * 5. 优雅停机将状态切换到 STOPPING_PREP
+     * 6. 执行真正的停止逻辑
+     * 7. 发布完全停止状态
+     * 8. 如果当前对象是 SingleUse 执行 destroy
      */
     @Override
     public final synchronized void stop() throws LifecycleException {
@@ -234,26 +254,26 @@ public abstract class LifecycleBase implements Lifecycle {
 
             return;
         }
-
+        // 如果状态仍未初始化 直接修改为结束 然后结束该方法
         if (state.equals(LifecycleState.NEW)) {
             state = LifecycleState.STOPPED;
             return;
         }
-
+        // 如果状态不是STARTED 或 FAILED 说明状态值有问题抛出异常结束
         if (!state.equals(LifecycleState.STARTED) && !state.equals(LifecycleState.FAILED)) {
             invalidTransition(Lifecycle.BEFORE_STOP_EVENT);
         }
 
         try {
+            //如果状态为启动失败发布 BEFORE_STOP_EVENT 失败之前的行为 其实这两行代码意义相似 这里不判断也是可以的
             if (state.equals(LifecycleState.FAILED)) {
-                // Don't transition to STOPPING_PREP as that would briefly mark the
-                // component as available but do ensure the BEFORE_STOP_EVENT is
-                // fired
+                // 不要转换到 STOPPING_PREP，因为这会短暂地将组件标记为可用，但请确保触发 BEFORE_STOP_EVENT
                 fireLifecycleEvent(BEFORE_STOP_EVENT, null);
             } else {
+                // 否则发布 STOPPING_PREP 不检查状态合理性
                 setStateInternal(LifecycleState.STOPPING_PREP, null, false);
             }
-
+            // 执行真正的停止逻辑
             stopInternal();
 
             // Shouldn't be necessary but acts as a check that sub-classes are
@@ -261,7 +281,7 @@ public abstract class LifecycleBase implements Lifecycle {
             if (!state.equals(LifecycleState.STOPPING) && !state.equals(LifecycleState.FAILED)) {
                 invalidTransition(Lifecycle.AFTER_STOP_EVENT);
             }
-
+            // 发布完全停止状态
             setStateInternal(LifecycleState.STOPPED, null, false);
         } catch (Throwable t) {
             handleSubClassException(t, "lifecycleBase.stopFail", toString());
@@ -316,7 +336,7 @@ public abstract class LifecycleBase implements Lifecycle {
 
             return;
         }
-
+        // 如果状态不是已经停止 或者启动失败或者为初始化或者初始化完毕 那么状态非法
         if (!state.equals(LifecycleState.STOPPED) && !state.equals(LifecycleState.FAILED) &&
                 !state.equals(LifecycleState.NEW) && !state.equals(LifecycleState.INITIALIZED)) {
             invalidTransition(Lifecycle.BEFORE_DESTROY_EVENT);
