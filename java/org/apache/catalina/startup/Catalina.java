@@ -234,7 +234,7 @@ public class Catalina {
 
 
     /**
-     * Set the shared extensions class loader.
+     * Set the shared extensions class loader.默认为URL ClassLoader
      *
      * @param parentClassLoader The shared extensions class loader.
      */
@@ -604,7 +604,7 @@ public class Catalina {
             serverXml.load(this);
         } else {
             try (ConfigurationSource.Resource resource = ConfigFileLoader.getSource().getServerXml()) {
-                // Create and execute our Digester
+                // 创建Digester对象，用来解析server.xml对象
                 Digester digester = start ? createStartDigester() : createStopDigester();
                 InputStream inputStream = resource.getInputStream();
                 InputSource inputSource = new InputSource(resource.getURI().toURL().toString());

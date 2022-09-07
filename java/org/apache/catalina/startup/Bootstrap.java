@@ -471,8 +471,7 @@ public final class Bootstrap {
 
 
     /**
-     * Main method and entry point when starting Tomcat via the provided
-     * scripts.
+     * 启动tomcat
      *
      * @param args Command line arguments to be processed
      */
@@ -497,7 +496,7 @@ public final class Bootstrap {
                 Thread.currentThread().setContextClassLoader(daemon.catalinaLoader);
             }
         }
-
+        //开始启动
         try {
             String command = "start";
             if (args.length > 0) {
